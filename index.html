@@ -103,8 +103,16 @@ function render() {
 
 /* ---------- provider API (Xtream-style). No content is bundled. ---------- */
 const norm = s => { s = s.trim().replace(/\/+$/, ''); return /^https?:\/\//i.test(s) ? s : 'http://' + s; };
-const api = (extra = '') => fetch((C.proxy || '') + `${C.server}/player_api.php?username=${encodeURIComponent(C.user)}&password=${encodeURIComponent(C.pass)}${extra}`)
-  .then(r => { if (!r.ok) throw Error('Server returned ' + r.status); return r.json(); });
+// Inside the Android app, API calls go through Capacitor's native HTTP (no CORS). In a plain browser they use fetch.
+const nat = () => window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp;
+const api = (extra = '') => {
+  const u = (C.proxy || '') + `${C.server}/player_api.php?username=${encodeURIComponent(C.user)}&password=${encodeURIComponent(C.pass)}${extra}`;
+  if (nat()) return nat().get({url: u}).then(r => {
+    if (r.status >= 400) throw Error('Server returned ' + r.status);
+    return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+  });
+  return fetch(u).then(r => { if (!r.ok) throw Error('Server returned ' + r.status); return r.json(); });
+};
 const ACT = {live: 'get_live_streams', vod: 'get_vod_streams', series: 'get_series'};
 const getCats = k => api(`&action=get_${k}_categories`).then(d => (d || []).map(x => ({id: String(x.category_id), name: x.category_name})));
 const getItems = k => api(`&action=${ACT[k]}`).then(d => (d || []).map(x => ({
@@ -311,21 +319,32 @@ SCR.player = ({url: src, title, live}) => {
   const TP = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
   const v = h('video', {autoplay: '', playsinline: '', poster: TP}), ov = h('div', {class: 'ov'}, title), msg = h('div', {class: 'err'});
   app.append(h('div', {class: 'pl', onclick: () => { v.paused ? v.play() : v.pause(); flash(); }}, v, ov, msg));
-  let hls, tm;
+  let hls, tm, i = -1, last = '';
   const ext = (src.split('?')[0].split('.').pop() || '').toLowerCase();
   const flash = () => { ov.classList.add('show'); clearTimeout(tm); tm = setTimeout(() => ov.classList.remove('show'), 3000); };
   const fail = why => {
     msg.textContent = "Couldn't play this stream" + (why ? ' (' + why + ')' : '') + '.' +
       (!live && !/^(mp4|m4v|webm|m3u8)$/.test(ext) ? ' The built-in player may not support .' + ext + ' files yet.' : '');
   };
-  if (/\.m3u8/.test(src) && window.Hls && Hls.isSupported()) {
-    hls = new Hls(); hls.loadSource(src); hls.attachMedia(v);
-    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) fail(d.type + ': ' + d.details); });
-  } else v.src = src;
-  v.onerror = () => fail({1: 'aborted', 2: 'network error', 3: 'decode error', 4: 'format not supported'}[v.error && v.error.code] || 'unknown error');
-  v.play().catch(() => {});
+  const canHls = !!(window.Hls && Hls.isSupported());
+  // Try the phone's own HLS player first (it ignores CORS), then hls.js, or the other way round.
+  const order = /\.m3u8/.test(src) ? (v.canPlayType('application/vnd.apple.mpegurl') ? ['native', 'hls'] : ['hls', 'native']) : ['native'];
+  const next = why => {
+    if (why) last = why;
+    if (hls) { hls.destroy(); hls = null; }
+    const m = order[++i];
+    if (!m) return fail(last);
+    if (m === 'hls') {
+      if (!canHls) return next();
+      hls = new Hls(); hls.loadSource(src); hls.attachMedia(v);
+      hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) next('hls.js ' + d.type + ': ' + d.details); });
+    } else { v.removeAttribute('src'); v.src = src; }
+    v.play().catch(() => {});
+  };
+  v.onerror = () => next('native ' + ({1: 'aborted', 2: 'network error', 3: 'decode error', 4: 'format not supported'}[v.error && v.error.code] || 'unknown error'));
+  next();
   ply = {v, live, flash}; flash();
-  cleanup = () => { clearTimeout(tm); hls && hls.destroy(); v.pause(); v.removeAttribute('src'); v.load(); };
+  cleanup = () => { clearTimeout(tm); hls && hls.destroy(); v.onerror = null; v.pause(); v.removeAttribute('src'); v.load(); };
 };
 
 /* ---------- remote / keyboard navigation ---------- */

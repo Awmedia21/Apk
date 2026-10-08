@@ -3,6 +3,5 @@
   "appName": "My Player",
   "webDir": "www",
   "server": { "cleartext": true },
-  "android": { "allowMixedContent": true },
-  "plugins": { "CapacitorHttp": { "enabled": true } }
+  "android": { "allowMixedContent": true }
 }
