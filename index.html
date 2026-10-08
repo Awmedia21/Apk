@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player</title>
+<style>
+:root{--bg:#07111f;--p:rgba(255,255,255,.07);--pf:rgba(45,156,255,.35);--ln:rgba(255,255,255,.14);--ac:#2d9cff;--sb:rgba(255,255,255,.6);--on:#27506b;--off:0px}
+*{box-sizing:border-box}
+html{font-size:clamp(14px,1.05vw,22px)}
+html,body{margin:0;height:100%;background:var(--bg);color:#fff;font-family:system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+#app{height:100%;position:relative}
+[data-f]{outline:none;border:2px solid transparent;cursor:pointer}
+[data-f]:focus{border-color:var(--ac);background-color:var(--pf)}
+h1{font-size:2.2rem;margin:0 0 .6rem}
+.pad{padding:3vw 4vw}.scr{height:100%;overflow-y:auto}
+.sb{color:var(--sb)}.err{color:#ff7b7b;margin:.6rem 0}
+.btn{background:var(--ac);padding:.9rem;text-align:center;border-radius:10px;font-weight:600;font-size:1.3rem}
+/* login */
+.lg{height:100%;display:flex;align-items:center;justify-content:center}.lg>div{width:min(40rem,92vw)}
+label{display:block;color:var(--sb);margin:0 0 1.1rem}
+input{display:block;width:100%;margin-top:.4rem;padding:.8rem;font-size:1.3rem;color:#fff;background:var(--p);border:2px solid var(--ln);border-radius:10px}
+input:focus{outline:none;border-color:var(--ac)}
+/* home */
+.hm{height:100%;padding:4vw;display:flex;flex-direction:column}
+.top{display:flex;justify-content:flex-end;align-items:center;gap:2rem;font-size:1.4rem}
+.top [data-f]{padding:.5rem .9rem;border-radius:10px}
+.grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr;gap:1.2rem;margin:1.5rem 0 3rem}
+.card{background:var(--p);border:1px solid var(--ln);border-radius:14px;padding:1.5rem;display:flex;flex-direction:column;justify-content:flex-end}
+.card.t{grid-row:span 2}.card.s{align-items:center;justify-content:center}
+.card i{font-style:normal;font-size:4.5rem;color:var(--ac);margin-bottom:auto}.card.s i{margin:0}
+.card b{font-size:1.8rem}
+@media(max-width:700px){.grid{grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:9rem;overflow-y:auto}.card.t{grid-row:auto}}
+/* posters */
+.hr{display:flex;overflow-x:auto;padding:.3rem 0 .6rem;scrollbar-width:none}.hr::-webkit-scrollbar{display:none}
+.po{flex:none;width:9rem;margin-right:.9rem;padding:3px;border-radius:10px}
+.im{height:13.5rem;border-radius:8px;overflow:hidden;background:var(--p);display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:.4rem;color:var(--sb)}
+.im img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.nm{margin-top:.4rem;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg2{display:flex;flex-wrap:wrap;gap:.6rem}
+.chip{display:inline-block;flex:none;padding:.45rem 1rem;border-radius:20px;background:var(--p);margin:.4rem .5rem .4rem 0}.chip.on{background:var(--on)}
+.ep{padding:.9rem 1rem;border-radius:10px;margin-bottom:.5rem;background:var(--p);font-size:1.2rem}
+/* epg */
+.epg{height:100%;display:flex;flex-direction:column}
+.eh{display:flex;height:3rem;background:#1b2a38;flex:none}.hc{width:var(--col);flex:none;padding:.7rem 1rem;font-size:1.1rem}
+.vp{position:relative;overflow:hidden;flex:1}
+.strip{position:absolute;top:0;left:0;height:100%;transform:translateX(calc(var(--off) * -1))}
+.tk{position:absolute;top:.6rem;font-size:1.2rem;padding-left:.5rem}
+.chips{flex:none;white-space:nowrap;overflow-x:auto;padding:0 .5rem;scrollbar-width:none}
+.ew{flex:1;position:relative;min-height:0}.el{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none}
+.row{display:flex;height:3.6rem;border-bottom:1px solid var(--ln)}
+.ch{width:var(--col);flex:none;display:flex;align-items:center;gap:.7rem;padding:0 .8rem;overflow:hidden;white-space:nowrap}
+.ch span{color:var(--sb);width:2.2rem;flex:none}.ch img{width:2.8rem;height:2rem;object-fit:contain;flex:none}
+.pg{position:absolute;top:3px;bottom:3px;border-radius:6px;background:#14202e;padding:0 .8rem;display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1.2rem}
+.pg.now{background:var(--on)}.pg.ph{color:var(--sb);cursor:default}
+.nl{position:absolute;top:0;bottom:0;width:2px;background:var(--ac);pointer-events:none}
+.ei{flex:none;height:8rem;background:#0e2233;padding:.8rem 1rem .8rem calc(var(--col) + .5rem);overflow:hidden}.ei b{font-size:1.6rem}
+.bar{display:inline-block;width:9rem;height:4px;background:var(--ln);margin:0 .8rem;vertical-align:middle}.bar u{display:block;height:4px;background:#fff}
+/* player */
+.pl{position:fixed;inset:0;background:#000}.pl video{width:100%;height:100%;background:#000}
+.ov{position:absolute;top:0;left:0;right:0;padding:1.5rem 2rem;font-size:1.6rem;background:linear-gradient(#000a,transparent);opacity:0;transition:opacity .3s}.ov.show{opacity:1}
+.pl .err{position:absolute;bottom:2rem;left:2rem;right:2rem;font-size:1.3rem}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:#000c;padding:.7rem 1.4rem;border-radius:20px;z-index:9}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="hls.min.js"></script>
+<script>
+const app = document.getElementById('app');
+const h = (t, a = {}, ...k) => {
+  const e = document.createElement(t);
+  for (const [n, v] of Object.entries(a)) {
+    if (n === 'f') { e.dataset.f = 1; e.tabIndex = 0; }
+    else if (n.startsWith('on') || n === 'value') e[n] = v;
+    else if (n === 'class') e.className = v;
+    else e.setAttribute(n, v);
+  }
+  e.append(...k.flat().filter(x => x != null && x !== false));
+  return e;
+};
+const LS = {
+  get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const hm = t => new Date(t).toTimeString().slice(0, 5);
+const toast = m => { const t = h('div', {class: 'toast'}, m); document.body.append(t); setTimeout(() => t.remove(), 2200); };
+
+let C = LS.get('creds', null), stack = [{n: C ? 'home' : 'login'}], cleanup = null, endHook = null, ply = null;
+const SCR = {};
+const go = (n, a) => { stack.push({n, a}); render(); };
+const back = () => { if (stack.length > 1 && stack[stack.length - 1].n !== 'home') { stack.pop(); render(); } };
+const focusFirst = () => (app.querySelector('[data-pref]') || app.querySelector('[data-f]'))?.focus({preventScroll: true});
+function render() {
+  cleanup && cleanup(); cleanup = endHook = ply = null;
+  app.replaceChildren();
+  const s = stack[stack.length - 1];
+  SCR[s.n](s.a);
+  setTimeout(focusFirst, 50);
+}
+
+/* ---------- provider API (Xtream-style). No content is bundled. ---------- */
+const norm = s => { s = s.trim().replace(/\/+$/, ''); return /^https?:\/\//i.test(s) ? s : 'http://' + s; };
+const api = (extra = '') => fetch((C.proxy || '') + `${C.server}/player_api.php?username=${encodeURIComponent(C.user)}&password=${encodeURIComponent(C.pass)}${extra}`)
+  .then(r => { if (!r.ok) throw Error('Server returned ' + r.status); return r.json(); });
+const ACT = {live: 'get_live_streams', vod: 'get_vod_streams', series: 'get_series'};
+const getCats = k => api(`&action=get_${k}_categories`).then(d => (d || []).map(x => ({id: String(x.category_id), name: x.category_name})));
+const getItems = k => api(`&action=${ACT[k]}`).then(d => (d || []).map(x => ({
+  id: String(x.stream_id ?? x.series_id), kind: k, name: x.name, poster: x.stream_icon || x.cover || '',
+  cat: String(x.category_id), ext: x.container_extension})));
+const url = (k, id, ext) => k === 'live' ? `${C.server}/live/${C.user}/${C.pass}/${id}.m3u8`
+  : `${C.server}/${k === 'vod' ? 'movie' : 'series'}/${C.user}/${C.pass}/${id}.${ext || 'mp4'}`;
+const dec = s => { try { return decodeURIComponent(escape(atob(s))); } catch { return s || ''; } };
+const getEpg = id => api(`&action=get_short_epg&stream_id=${id}&limit=12`).then(d => (d.epg_listings || []).map(e => ({
+  title: dec(e.title), desc: dec(e.description), start: +e.start_timestamp * 1000, stop: +e.stop_timestamp * 1000})));
+
+/* ---------- saved lists ---------- */
+const same = (a, b) => a.id === b.id && a.kind === b.kind;
+const hist = it => LS.set('history', [it, ...LS.get('history', []).filter(x => !same(x, it))].slice(0, 40));
+const fav = it => {
+  const f = LS.get('fav', []), has = f.some(x => same(x, it));
+  LS.set('fav', has ? f.filter(x => !same(x, it)) : [it, ...f]);
+  toast(has ? 'Removed from My favorites' : 'Added to My favorites');
+};
+const open = it => {
+  if (it.kind === 'series') return go('seriesInfo', it);
+  hist(it); go('player', {url: url(it.kind, it.id, it.ext), title: it.name, live: it.kind === 'live'});
+};
+const poster = it => {
+  const e = h('div', {class: 'po', f: 1, onclick: () => open(it), oncontextmenu: ev => { ev.preventDefault(); fav(it); }},
+    h('div', {class: 'im'}, h('span', {}, it.name), it.poster && h('img', {src: it.poster, loading: 'lazy', alt: '', onerror: ev => ev.target.remove()})),
+    h('div', {class: 'nm'}, it.name));
+  e._it = it; return e;
+};
+
+/* ---------- screens ---------- */
+SCR.login = () => {
+  const f = {server: '', user: '', pass: '', proxy: ''};
+  const err = h('div', {class: 'err'});
+  const fld = (k, l, type = 'text', ph = '') => h('label', {}, l, h('input', {type, placeholder: ph, f: 1, oninput: e => f[k] = e.target.value}));
+  const submit = async () => {
+    if (!f.server || !f.user || !f.pass) { err.textContent = 'Fill in the server address, username and password.'; return; }
+    C = {server: norm(f.server), user: f.user.trim(), pass: f.pass, proxy: f.proxy.trim()};
+    err.textContent = 'Signing in…';
+    try {
+      const d = await api();
+      if (d?.user_info?.auth !== 1) throw Error('Sign-in failed. Check the server address, username and password.');
+      LS.set('creds', C); stack = [{n: 'home'}]; render();
+    } catch (e) {
+      err.textContent = /fetch|Network/i.test(e.message)
+        ? "Couldn't reach the server. Check the address, or set a proxy under Advanced if the provider blocks web requests."
+        : e.message;
+    }
+  };
+  const adv = h('div', {style: 'display:none'}, fld('proxy', 'Proxy prefix (optional)', 'text', 'https://my-proxy.example/?u='));
+  app.append(h('div', {class: 'lg'}, h('div', {},
+    h('h1', {}, 'Add your provider'),
+    h('p', {class: 'sb'}, "This app doesn't include any content. Sign in with the details your provider gave you."),
+    fld('server', 'Server address', 'text', 'http://example.com:8080'), fld('user', 'Username'), fld('pass', 'Password', 'password'),
+    err, adv,
+    h('div', {class: 'btn', f: 1, onclick: submit}, 'Sign in'),
+    h('p', {class: 'sb', f: 1, onclick: () => adv.style.display = 'block', style: 'padding:.5rem;border-radius:8px'}, 'Advanced'))));
+};
+
+SCR.home = () => {
+  const clk = h('span');
+  const tick = () => { const d = new Date(); clk.textContent = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}  ${hm(d)}`; };
+  tick(); const iv = setInterval(tick, 20000); cleanup = () => clearInterval(iv);
+  const card = (cls, glyph, title, sub, fn, pref) => h('div', {class: 'card ' + cls, f: 1, onclick: fn, 'data-pref': pref ? 1 : null},
+    h('i', {}, glyph), h('b', {}, title), sub && h('div', {class: 'sb'}, sub));
+  app.append(h('div', {class: 'hm'},
+    h('div', {class: 'top'}, clk, h('div', {f: 1, onclick: () => { localStorage.removeItem('creds'); C = null; stack = [{n: 'login'}]; render(); }}, 'Sign out')),
+    h('div', {class: 'grid'},
+      card('t', '▶', 'Live TV', 'Channels with a full TV guide.', () => go('live'), true),
+      card('t', '◉', 'Movies', 'Browse by genre.', () => go('browse', 'vod')),
+      card('t', '▣', 'Series', 'Seasons and episodes.', () => go('browse', 'series')),
+      card('s', '★', 'My favorites', '', () => go('saved', 'fav')),
+      card('s', '◷', 'History', '', () => go('saved', 'history')))));
+};
+
+SCR.browse = async kind => {
+  const box = h('div', {}, h('p', {class: 'sb'}, 'Loading…'));
+  app.append(h('div', {class: 'scr pad'}, h('h1', {}, kind === 'vod' ? 'Movies' : 'Series'), box,
+    h('p', {class: 'sb'}, 'Press Menu (or long-press) on a poster to add it to My favorites.')));
+  try {
+    const [cats, items] = await Promise.all([getCats(kind), getItems(kind)]);
+    const by = new Map();
+    items.forEach(i => { const a = by.get(i.cat) || []; if (a.length < 40) a.push(i); by.set(i.cat, a); });
+    const rows = cats.filter(c => by.has(c.id));
+    box.replaceChildren(...rows.map(c => h('div', {style: 'margin-top:1rem'}, h('h2', {style: 'margin:.3rem 0'}, c.name), h('div', {class: 'hr'}, by.get(c.id).map(poster)))));
+    if (!rows.length) box.textContent = 'Nothing found for this account.';
+  } catch (e) { box.replaceChildren(h('div', {class: 'err'}, e.message)); }
+  focusFirst();
+};
+
+SCR.saved = l => {
+  const items = LS.get(l, []);
+  app.append(h('div', {class: 'scr pad'}, h('h1', {}, l === 'fav' ? 'My favorites' : 'History'),
+    items.length ? h('div', {class: 'pg2'}, items.map(poster)) : h('p', {class: 'sb'}, l === 'fav' ? 'Nothing here yet. Press Menu (or long-press) on a poster to save it.' : 'Titles you watch will show up here.')));
+};
+
+SCR.seriesInfo = async it => {
+  const head = h('div', {}, h('h1', {}, it.name), h('p', {class: 'sb'}, 'Loading…')), seas = h('div'), eps = h('div');
+  app.append(h('div', {class: 'scr pad'}, head, seas, eps));
+  try {
+    const d = await api(`&action=get_series_info&series_id=${it.id}`), E = d.episodes || {};
+    head.lastChild.textContent = d.info?.plot || '';
+    const show = s => {
+      [...seas.children].forEach(c => c.classList.toggle('on', c.dataset.s === s));
+      eps.replaceChildren(...(E[s] || []).map((e, i) => h('div', {class: 'ep', f: 1, onclick: () => go('player', {url: url('series', e.id, e.container_extension), title: `${it.name} – ${e.title}`})}, `${i + 1}. ${e.title}`)));
+    };
+    seas.replaceChildren(...Object.keys(E).map(s => h('div', {class: 'chip', f: 1, 'data-s': s, onclick: () => show(s)}, 'Season ' + s)));
+    show(Object.keys(E)[0]);
+  } catch (e) { head.lastChild.textContent = e.message; }
+  focusFirst();
+};
+
+SCR.live = async () => {
+  const COL = Math.round(Math.min(330, innerWidth * .26)), PX = (innerWidth - COL) / 150, HRS = 4, SPAN = HRS * 60 * PX;
+  const st = new Date(); st.setMinutes(st.getMinutes() < 30 ? 0 : 30, 0, 0);
+  const start = st.getTime() - 30 * 6e4, X = t => (t - start) / 6e4 * PX;
+  let off = 0, all = [], shown = [], n = 0;
+  const asked = new Set();
+  const root = h('div', {class: 'epg', style: `--col:${COL}px`});
+  const ticks = h('div', {class: 'strip', style: `width:${SPAN}px`}, Array.from({length: HRS * 2}, (_, i) => h('div', {class: 'tk', style: `left:${i * 30 * PX}px`}, hm(start + i * 18e5))));
+  const chips = h('div', {class: 'chips'}), list = h('div', {class: 'el'}), nl = h('div', {class: 'nl'}), info = h('div', {class: 'ei'});
+  root.append(h('div', {class: 'eh'}, h('div', {class: 'hc'}, new Date().toLocaleDateString(undefined, {weekday: 'short', month: 'short', day: 'numeric'}) + ', ' + hm(Date.now())), h('div', {class: 'vp'}, ticks)),
+    chips, h('div', {class: 'ew'}, list, nl), info);
+  app.append(root);
+  const nowLine = () => { const x = COL + X(Date.now()) - off; nl.style.display = x > COL && x < innerWidth ? 'block' : 'none'; nl.style.left = x + 'px'; };
+  const ensure = (l, r) => {
+    const V = list.querySelector('.vp')?.clientWidth || innerWidth - COL;
+    if (l < off) off = l; else if (r > off + V) off = Math.max(0, r - V);
+    root.style.setProperty('--off', off + 'px'); nowLine();
+  };
+  const show = (ch, p) => info.replaceChildren(...(p ? [h('b', {}, p.title),
+    h('div', {class: 'sb'}, `${hm(p.start)} – ${hm(p.stop)}`, h('span', {class: 'bar'}, h('u', {style: `width:${Math.max(0, Math.min(100, (Date.now() - p.start) / (p.stop - p.start) * 100))}%`})), ch.name),
+    h('div', {class: 'sb'}, p.desc)] : [h('b', {}, ch.name), h('div', {class: 'sb'}, 'Press Select to watch.')]));
+  const fill = (r, progs) => {
+    const ch = r._ch, now = Date.now();
+    const bl = progs.map(p => {
+      const l = Math.max(0, X(p.start)), rr = Math.min(SPAN, X(p.stop));
+      if (rr - l < 6) return null;
+      const b = h('div', {class: 'pg' + (p.start <= now && p.stop > now ? ' now' : ''), f: 1, style: `left:${l}px;width:${rr - l - 3}px`, onclick: () => open(ch)}, p.title);
+      b._p = p; b._ch = ch; b.dataset.l = l; b.dataset.r = rr; return b;
+    }).filter(Boolean);
+    r._strip.replaceChildren(...(bl.length ? bl : [h('div', {class: 'pg ph', style: `left:0;width:${SPAN}px`}, 'No guide data')]));
+  };
+  const need = r => {
+    if (asked.has(r._ch.id)) return; asked.add(r._ch.id);
+    getEpg(r._ch.id).then(p => fill(r, p)).catch(() => fill(r, []));
+  };
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); need(e.target); } }), {root: list, rootMargin: '300px'});
+  const mk = (ch, i) => {
+    const c = h('div', {class: 'ch', f: 1, onclick: () => open(ch)}, h('span', {}, i), ch.poster && h('img', {src: ch.poster, alt: '', loading: 'lazy', onerror: e => e.target.remove()}), ch.name);
+    c._ch = ch;
+    const strip = h('div', {class: 'strip', style: `width:${SPAN}px`}, h('div', {class: 'pg ph', style: `left:0;width:${SPAN}px`}, 'Loading…'));
+    const r = h('div', {class: 'row'}, c, h('div', {class: 'vp'}, strip));
+    r._ch = ch; r._strip = strip; return r;
+  };
+  const more = () => {
+    shown.slice(n, n + 40).forEach((c, i) => { const r = mk(c, n + i + 1); list.append(r); io.observe(r); });
+    n += 40;
+  };
+  endHook = () => { if (n < shown.length) { more(); return true; } };
+  const setCat = id => {
+    shown = all.filter(c => id === 'all' || c.cat === id); n = 0; list.replaceChildren(); list.scrollTop = 0; more();
+    [...chips.children].forEach(c => c.classList.toggle('on', c.dataset.c === id));
+  };
+  root.addEventListener('focusin', e => {
+    const t = e.target;
+    if (t.dataset.l != null) ensure(+t.dataset.l, +t.dataset.r);
+    if (t._ch) show(t._ch, t._p);
+  });
+  root.addEventListener('scroll', e => { if (e.target.classList.contains('vp')) e.target.scrollLeft = 0; }, true);
+  list.addEventListener('scroll', () => { if (list.scrollTop + list.clientHeight > list.scrollHeight - 400) endHook && endHook(); });
+  const iv = setInterval(nowLine, 30000); cleanup = () => { clearInterval(iv); io.disconnect(); };
+  try {
+    const [cats, chs] = await Promise.all([getCats('live'), getItems('live')]);
+    all = chs;
+    chips.replaceChildren(...[{id: 'all', name: 'All channels'}, ...cats].map(c => h('div', {class: 'chip', f: 1, 'data-c': c.id, onclick: () => setCat(c.id)}, c.name)));
+    setCat('all'); nowLine();
+  } catch (e) { list.append(h('div', {class: 'err pad'}, e.message)); }
+  focusFirst();
+};
+
+SCR.player = ({url: src, title, live}) => {
+  const v = h('video', {autoplay: '', playsinline: ''}), ov = h('div', {class: 'ov'}, title), msg = h('div', {class: 'err'});
+  app.append(h('div', {class: 'pl'}, v, ov, msg));
+  let hls, tm;
+  const flash = () => { ov.classList.add('show'); clearTimeout(tm); tm = setTimeout(() => ov.classList.remove('show'), 3000); };
+  const fail = () => msg.textContent = "Couldn't play this stream. If this page is on https and the provider is http, the browser blocks it.";
+  if (/\.m3u8/.test(src) && window.Hls && Hls.isSupported()) {
+    hls = new Hls(); hls.loadSource(src); hls.attachMedia(v);
+    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) fail(); });
+  } else v.src = src;
+  v.onerror = fail; v.play().catch(() => {});
+  ply = {v, live, flash}; flash();
+  cleanup = () => { clearTimeout(tm); hls && hls.destroy(); v.pause(); v.removeAttribute('src'); v.load(); };
+};
+
+/* ---------- remote / keyboard navigation ---------- */
+function nav(D, retry) {
+  const cur = document.activeElement;
+  const all = [...app.querySelectorAll('[data-f]')].filter(e => e.offsetParent);
+  if (!cur || !cur.dataset.f) { all[0]?.focus({preventScroll: true}); return; }
+  const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  let best = null, bs = 1e9;
+  for (const e of all) {
+    if (e === cur) continue;
+    const r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    let along, cross;
+    if (D === 'L' || D === 'R') {
+      along = D === 'R' ? x - ax : ax - x;
+      cross = r.top <= ay && r.bottom >= ay ? 0 : Math.min(Math.abs(r.top - ay), Math.abs(r.bottom - ay));
+    } else {
+      along = D === 'D' ? y - ay : ay - y;
+      cross = r.left <= ax && r.right >= ax ? 0 : Math.min(Math.abs(r.left - ax), Math.abs(r.right - ax));
+    }
+    if (along < 2) continue;
+    const s = along + cross * 3;
+    if (s < bs) { bs = s; best = e; }
+  }
+  if (best) best.focus({preventScroll: true});
+  else if (D === 'D' && !retry && endHook && endHook()) setTimeout(() => nav(D, 1), 30);
+}
+app.addEventListener('focusin', e => (e.target.closest('.row') || e.target).scrollIntoView?.({block: 'nearest', inline: 'nearest'}));
+addEventListener('keydown', e => {
+  const s = stack[stack.length - 1], a = document.activeElement, inp = a && a.tagName === 'INPUT';
+  const isBack = ['Escape', 'GoBack', 'BrowserBack'].includes(e.key) || e.keyCode === 4 || (e.key === 'Backspace' && !inp);
+  if (s.n === 'player' && ply) {
+    const {v, live, flash} = ply;
+    if (isBack) { e.preventDefault(); back(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); v.paused ? v.play() : v.pause(); flash(); }
+    else if (!live && e.key === 'ArrowRight') { v.currentTime += 10; flash(); }
+    else if (!live && e.key === 'ArrowLeft') { v.currentTime -= 10; flash(); }
+    return;
+  }
+  const D = {ArrowLeft: 'L', ArrowRight: 'R', ArrowUp: 'U', ArrowDown: 'D'}[e.key];
+  if (D) { if (inp && (D === 'L' || D === 'R')) return; e.preventDefault(); nav(D); }
+  else if (e.key === 'Enter' && a && a.dataset.f && !inp) { e.preventDefault(); a.click(); }
+  else if (isBack) { e.preventDefault(); back(); }
+  else if ((e.key === 'ContextMenu' || e.key === 'Menu') && a?._it) { e.preventDefault(); fav(a._it); }
+});
+/* Android hardware Back button (Capacitor) */
+const CapApp = window.Capacitor?.Plugins?.App;
+CapApp?.addListener('backButton', () => {
+  const s = stack[stack.length - 1];
+  if (s.n === 'home' || s.n === 'login') CapApp.exitApp(); else back();
+});
+render();
+</script>
+</body>
+</html>
