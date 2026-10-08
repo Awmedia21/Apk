@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Player</title>
 <style>
 :root{--bg:#07111f;--p:rgba(255,255,255,.07);--pf:rgba(45,156,255,.35);--ln:rgba(255,255,255,.14);--ac:#2d9cff;--sb:rgba(255,255,255,.6);--on:#27506b;--off:0px}
 *{box-sizing:border-box}
-html{font-size:clamp(14px,1.05vw,22px)}
+html{font-size:clamp(13px,1.1vw,24px)}
 html,body{margin:0;height:100%;background:var(--bg);color:#fff;font-family:system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden}
 #app{height:100%;position:relative}
 [data-f]{outline:none;border:2px solid transparent;cursor:pointer}
@@ -33,11 +33,12 @@ input:focus{outline:none;border-color:var(--ac)}
 @media(max-width:700px){.grid{grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:9rem;overflow-y:auto}.card.t{grid-row:auto}}
 /* posters */
 .hr{display:flex;overflow-x:auto;padding:.3rem 0 .6rem;scrollbar-width:none}.hr::-webkit-scrollbar{display:none}
-.po{flex:none;width:9rem;margin-right:.9rem;padding:3px;border-radius:10px}
-.im{height:13.5rem;border-radius:8px;overflow:hidden;background:var(--p);display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:.4rem;color:var(--sb)}
+.po{flex:none;width:clamp(7.5rem,26vw,11rem);margin-right:.9rem;padding:3px;border-radius:10px}
+.im{aspect-ratio:2/3;border-radius:8px;overflow:hidden;background:var(--p);display:flex;align-items:center;justify-content:center;position:relative;text-align:center;padding:.4rem;color:var(--sb)}
 .im img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .nm{margin-top:.4rem;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pg2{display:flex;flex-wrap:wrap;gap:.6rem}
+.pg2{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(7.5rem,26vw,11rem),1fr));gap:.7rem}.pg2 .po{width:auto;margin:0}
+.sh{display:inline-block;padding:.3rem .8rem;margin:.3rem 0 .3rem -.8rem;border-radius:10px;font-size:1.5rem;font-weight:700}.sh:after{content:" \203A";color:var(--ac)}
 .chip{display:inline-block;flex:none;padding:.45rem 1rem;border-radius:20px;background:var(--p);margin:.4rem .5rem .4rem 0}.chip.on{background:var(--on)}
 .ep{padding:.9rem 1rem;border-radius:10px;margin-bottom:.5rem;background:var(--p);font-size:1.2rem}
 /* epg */
@@ -57,9 +58,10 @@ input:focus{outline:none;border-color:var(--ac)}
 .ei{flex:none;height:8rem;background:#0e2233;padding:.8rem 1rem .8rem calc(var(--col) + .5rem);overflow:hidden}.ei b{font-size:1.6rem}
 .bar{display:inline-block;width:9rem;height:4px;background:var(--ln);margin:0 .8rem;vertical-align:middle}.bar u{display:block;height:4px;background:#fff}
 /* player */
-.pl{position:fixed;inset:0;background:#000}.pl video{width:100%;height:100%;background:#000}
+.pl{position:fixed;inset:0;background:#000}.pl video{width:100%;height:100%;background:#000;object-fit:contain}
 .ov{position:absolute;top:0;left:0;right:0;padding:1.5rem 2rem;font-size:1.6rem;background:linear-gradient(#000a,transparent);opacity:0;transition:opacity .3s}.ov.show{opacity:1}
 .pl .err{position:absolute;bottom:2rem;left:2rem;right:2rem;font-size:1.3rem}
+@media(max-width:700px){html{font-size:13px}h1{font-size:1.7rem}.top{font-size:1.1rem}.card b{font-size:1.4rem}.card i{font-size:3rem}.sh{font-size:1.25rem}.ch img{display:none}.ch{gap:.3rem;padding:0 .4rem}.ch span{width:1.7rem}.ei{height:6.5rem}.ei b{font-size:1.15rem}.pg{font-size:1rem}}
 .toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:#000c;padding:.7rem 1.4rem;border-radius:20px;z-index:9}
 </style>
 </head>
@@ -110,6 +112,8 @@ const getItems = k => api(`&action=${ACT[k]}`).then(d => (d || []).map(x => ({
   cat: String(x.category_id), ext: x.container_extension})));
 const url = (k, id, ext) => k === 'live' ? `${C.server}/live/${C.user}/${C.pass}/${id}.m3u8`
   : `${C.server}/${k === 'vod' ? 'movie' : 'series'}/${C.user}/${C.pass}/${id}.${ext || 'mp4'}`;
+const cache = {};
+const load = k => cache[k] || (cache[k] = Promise.all([getCats(k), getItems(k)]).then(([cats, items]) => ({cats, items})).catch(e => { delete cache[k]; throw e; }));
 const dec = s => { try { return decodeURIComponent(escape(atob(s))); } catch { return s || ''; } };
 const getEpg = id => api(`&action=get_short_epg&stream_id=${id}&limit=12`).then(d => (d.epg_listings || []).map(e => ({
   title: dec(e.title), desc: dec(e.description), start: +e.start_timestamp * 1000, stop: +e.stop_timestamp * 1000})));
@@ -140,17 +144,19 @@ SCR.login = () => {
   const fld = (k, l, type = 'text', ph = '') => h('label', {}, l, h('input', {type, placeholder: ph, f: 1, oninput: e => f[k] = e.target.value}));
   const submit = async () => {
     if (!f.server || !f.user || !f.pass) { err.textContent = 'Fill in the server address, username and password.'; return; }
-    C = {server: norm(f.server), user: f.user.trim(), pass: f.pass, proxy: f.proxy.trim()};
+    const raw = f.server.trim().replace(/\/+$/, '');
+    const bases = /^https?:\/\//i.test(raw) ? [raw] : ['https://' + raw, 'http://' + raw];
     err.textContent = 'Signing in…';
-    try {
-      const d = await api();
-      if (d?.user_info?.auth !== 1) throw Error('Sign-in failed. Check the server address, username and password.');
-      LS.set('creds', C); stack = [{n: 'home'}]; render();
-    } catch (e) {
-      err.textContent = /fetch|Network/i.test(e.message)
-        ? "Couldn't reach the server. Check the address, or set a proxy under Advanced if the provider blocks web requests."
-        : e.message;
+    let last = '';
+    for (const base of bases) {
+      C = {server: base, user: f.user.trim(), pass: f.pass, proxy: f.proxy.trim()};
+      try {
+        const d = await api();
+        if (d?.user_info?.auth !== 1) { last = 'Sign-in failed. Check the username and password.'; break; }
+        LS.set('creds', C); stack = [{n: 'home'}]; render(); return;
+      } catch (e) { last = "Couldn't reach the server (" + (e.message || 'network error') + '). Check the address.'; }
     }
+    C = null; err.textContent = last;
   };
   const adv = h('div', {style: 'display:none'}, fld('proxy', 'Proxy prefix (optional)', 'text', 'https://my-proxy.example/?u='));
   app.append(h('div', {class: 'lg'}, h('div', {},
@@ -181,15 +187,32 @@ SCR.home = () => {
 SCR.browse = async kind => {
   const box = h('div', {}, h('p', {class: 'sb'}, 'Loading…'));
   app.append(h('div', {class: 'scr pad'}, h('h1', {}, kind === 'vod' ? 'Movies' : 'Series'), box,
-    h('p', {class: 'sb'}, 'Press Menu (or long-press) on a poster to add it to My favorites.')));
+    h('p', {class: 'sb'}, 'Select a genre title to see everything in it. Press Menu (or long-press) on a poster to add it to My favorites.')));
   try {
-    const [cats, items] = await Promise.all([getCats(kind), getItems(kind)]);
+    const {cats, items} = await load(kind);
     const by = new Map();
     items.forEach(i => { const a = by.get(i.cat) || []; if (a.length < 40) a.push(i); by.set(i.cat, a); });
     const rows = cats.filter(c => by.has(c.id));
-    box.replaceChildren(...rows.map(c => h('div', {style: 'margin-top:1rem'}, h('h2', {style: 'margin:.3rem 0'}, c.name), h('div', {class: 'hr'}, by.get(c.id).map(poster)))));
+    box.replaceChildren(...rows.map(c => h('div', {style: 'margin-top:.8rem'},
+      h('div', {class: 'sh', f: 1, onclick: () => go('category', {kind, cat: c})}, c.name),
+      h('div', {class: 'hr'}, by.get(c.id).map(poster)))));
     if (!rows.length) box.textContent = 'Nothing found for this account.';
   } catch (e) { box.replaceChildren(h('div', {class: 'err'}, e.message)); }
+  focusFirst();
+};
+
+SCR.category = async ({kind, cat}) => {
+  const grid = h('div', {class: 'pg2'}), box = h('div', {class: 'scr pad'}, h('h1', {}, cat.name), grid);
+  app.append(box);
+  let list = [], n = 0;
+  const more = () => { if (n >= list.length) return false; list.slice(n, n + 60).forEach(i => grid.append(poster(i))); n += 60; return true; };
+  endHook = more;
+  box.addEventListener('scroll', () => { if (box.scrollTop + box.clientHeight > box.scrollHeight - 600) more(); });
+  try {
+    const {items} = await load(kind);
+    list = items.filter(i => i.cat === cat.id); more();
+    if (!list.length) grid.textContent = 'Nothing here.';
+  } catch (e) { grid.textContent = e.message; }
   focusFirst();
 };
 
@@ -216,7 +239,7 @@ SCR.seriesInfo = async it => {
 };
 
 SCR.live = async () => {
-  const COL = Math.round(Math.min(330, innerWidth * .26)), PX = (innerWidth - COL) / 150, HRS = 4, SPAN = HRS * 60 * PX;
+  const COL = Math.round(Math.max(105, Math.min(330, innerWidth * .26))), PX = (innerWidth - COL) / (innerWidth < 700 ? 75 : 150), HRS = 4, SPAN = HRS * 60 * PX;
   const st = new Date(); st.setMinutes(st.getMinutes() < 30 ? 0 : 30, 0, 0);
   const start = st.getTime() - 30 * 6e4, X = t => (t - start) / 6e4 * PX;
   let off = 0, all = [], shown = [], n = 0;
@@ -285,16 +308,22 @@ SCR.live = async () => {
 };
 
 SCR.player = ({url: src, title, live}) => {
-  const v = h('video', {autoplay: '', playsinline: ''}), ov = h('div', {class: 'ov'}, title), msg = h('div', {class: 'err'});
-  app.append(h('div', {class: 'pl'}, v, ov, msg));
+  const TP = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  const v = h('video', {autoplay: '', playsinline: '', poster: TP}), ov = h('div', {class: 'ov'}, title), msg = h('div', {class: 'err'});
+  app.append(h('div', {class: 'pl', onclick: () => { v.paused ? v.play() : v.pause(); flash(); }}, v, ov, msg));
   let hls, tm;
+  const ext = (src.split('?')[0].split('.').pop() || '').toLowerCase();
   const flash = () => { ov.classList.add('show'); clearTimeout(tm); tm = setTimeout(() => ov.classList.remove('show'), 3000); };
-  const fail = () => msg.textContent = "Couldn't play this stream. If this page is on https and the provider is http, the browser blocks it.";
+  const fail = why => {
+    msg.textContent = "Couldn't play this stream" + (why ? ' (' + why + ')' : '') + '.' +
+      (!live && !/^(mp4|m4v|webm|m3u8)$/.test(ext) ? ' The built-in player may not support .' + ext + ' files yet.' : '');
+  };
   if (/\.m3u8/.test(src) && window.Hls && Hls.isSupported()) {
     hls = new Hls(); hls.loadSource(src); hls.attachMedia(v);
-    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) fail(); });
+    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) fail(d.type + ': ' + d.details); });
   } else v.src = src;
-  v.onerror = fail; v.play().catch(() => {});
+  v.onerror = () => fail({1: 'aborted', 2: 'network error', 3: 'decode error', 4: 'format not supported'}[v.error && v.error.code] || 'unknown error');
+  v.play().catch(() => {});
   ply = {v, live, flash}; flash();
   cleanup = () => { clearTimeout(tm); hls && hls.destroy(); v.pause(); v.removeAttribute('src'); v.load(); };
 };
